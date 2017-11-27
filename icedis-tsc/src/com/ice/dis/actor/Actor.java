@@ -15,7 +15,11 @@ public abstract class Actor
 		/** 进程内Actor,附着在某个Tworker上. */
 		ITC,
 		/** 拥有自己独立线程池或线程池的actor,主要用于IO阻塞操作, 如数据库查询. */
-		BLOCKING;
+		BLOCKING,
+		/** 即network to host, 网络到主机的连接. */
+		N2H,
+		/** 即host to network, 主机到网络的连接. */
+		H2N
 	}
 
 	/** 工作的线程. */

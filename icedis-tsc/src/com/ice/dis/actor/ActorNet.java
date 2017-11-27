@@ -81,9 +81,14 @@ public abstract class ActorNet extends Actor
 		/** -------------------------------- */
 		if (wbb != null)
 		{
-
+			this.write2Wbb(by);
 			return;
 		}
+		/** -------------------------------- */
+		/**                                  */
+		/** 依赖系统管理TCP发送缓冲区. */
+		/**                                  */
+		/** -------------------------------- */
 		try
 		{
 			if (this.sc.write(ByteBuffer.wrap(by)) != by.length)/* 写入的缓冲区满了. */
@@ -91,6 +96,7 @@ public abstract class ActorNet extends Actor
 				if (Log.isWarn())
 					Log.warn("tcp SND_BUF was full we will close this connection, peer: %s", this.peer);
 				this.close();
+				return;
 			}
 		} catch (Exception e)
 		{
@@ -109,8 +115,7 @@ public abstract class ActorNet extends Actor
 	{
 		if (!this.est)
 			return;
-		// TODO: 从当前线程中移除响应信息
-
+		this.getTworker().removeActorNet(this);
 	}
 
 	/** 套接字可写. */
