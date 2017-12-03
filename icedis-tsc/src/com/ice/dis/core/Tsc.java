@@ -41,6 +41,12 @@ public class Tsc
 		}
 	}
 
+	/** 返回当前工作线程. */
+	public static final Tworker getCurrentWorker()
+	{
+		return Tsc.currwk.get();
+	}
+	
 	/** 获取Tworker线程. */
 	public static int getCurrentTworkerIndex()
 	{
