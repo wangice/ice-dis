@@ -22,6 +22,8 @@ public abstract class ActorNet extends Actor {
 	public static final byte MODBUS_TCP = 0x02;
 	/** 连接上使用的协议. */
 	public byte protocol = 0x00;
+	/** 连接建立时间. */
+	public long gts = 0L;
 	/** 连接是否建立. */
 	public boolean est = false;
 	/** 连接标识, 用于打印. */

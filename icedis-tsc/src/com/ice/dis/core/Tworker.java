@@ -124,7 +124,7 @@ public class Tworker extends Actor {
 						Log.trace("got a connect : %s", Net.getRemoteAddr(sc));
 					ActorNet an = null;
 					if (Tsc.protocol == ActorNet.STMP)
-						an = new StmpN2H(sc);
+						an = new StmpN2H(sc, wk.wk);
 					try {
 						wk.addActorNet(an);
 						wk.setSocketOpt(an.sc);
