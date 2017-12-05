@@ -9,7 +9,9 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -18,6 +20,7 @@ import java.util.function.Consumer;
 import com.ice.dis.actor.Actor;
 import com.ice.dis.actor.ActorNet;
 import com.ice.dis.cfg.Cfg;
+import com.ice.dis.stmp.StmpH2N;
 import com.ice.dis.stmp.StmpN2H;
 import com.ice.dis.stmp.StmpNet;
 
@@ -25,8 +28,7 @@ import misc.Log;
 import misc.Misc;
 import misc.Net;
 
-public class Tworker extends Actor
-{
+public class Tworker extends Actor {
 	/** 多路复用器. */
 	public Selector slt;
 	/** 管道. */
@@ -37,6 +39,8 @@ public class Tworker extends Actor
 	public ByteBuffer signal = ByteBuffer.allocate(1);
 	/** 等待处理Consumer. */
 	public ConcurrentLinkedQueue<Consumer<Void>> cs = new ConcurrentLinkedQueue<>();
+	/** 线程上所有的H2N, 用于H2N自身检查事务超时和心跳发送. */
+	public List<StmpH2N> h2ns = new ArrayList<>();
 	/** 所有N2H + H2N. */
 	public ConcurrentHashMap<Integer, ActorNet> ans = new ConcurrentHashMap<>();
 	/** 线程忙？ */
@@ -44,8 +48,7 @@ public class Tworker extends Actor
 	/** 用于轮询分配工作线程. */
 	public static final AtomicInteger rb = new AtomicInteger(0);
 
-	public Tworker(int wk, Selector slt)
-	{
+	public Tworker(int wk, Selector slt) {
 		super(ActorType.TIC);
 		this.wk = wk;
 		this.slt = slt;
@@ -53,20 +56,16 @@ public class Tworker extends Actor
 		new Thread(() -> g.run()).start();
 	}
 
-	public void run()
-	{
+	public void run() {
 		this.pipe = this.initPipe();
 		if (this.pipe == null)
 			Misc.lazySystemExit();
-		try
-		{
-			while (true)
-			{
+		try {
+			while (true) {
 				this.slt.select();/* 等待接受一个连接. */
 				this.busy = true;
 				Iterator<SelectionKey> it = slt.selectedKeys().iterator();
-				while (it.hasNext())
-				{
+				while (it.hasNext()) {
 					SelectionKey key = it.next();
 					if (!key.isValid())/* 连接无效. */
 					{
@@ -87,38 +86,32 @@ public class Tworker extends Actor
 					}
 					if (key.isWritable())/* 关心写事件. */
 					{
-						
+
 						it.remove();
 						continue;
 					}
 					it.remove();/* 什么都不关心, 则直接移除. */
 				}
-				if (!this.cs.isEmpty())
-				{
+				if (!this.cs.isEmpty()) {
 					Consumer<Void> c = this.cs.poll();
-					while (c != null)
-					{
+					while (c != null) {
 						Misc.exeConsumer(c, null);
 						c = this.cs.poll();
 					}
 				}
 				this.busy = false;
 			}
-		} catch (IOException e)
-		{
+		} catch (IOException e) {
 			if (Log.isError())
 				Log.error("%s", Log.trace(e));
 		}
 	}
 
 	/** 处理读事件. */
-	public final void evnAccept(SelectionKey key)
-	{
-		try
-		{
+	public final void evnAccept(SelectionKey key) {
+		try {
 			ServerSocketChannel ssc = (ServerSocketChannel) key.channel();
-			while (true)
-			{
+			while (true) {
 				SocketChannel sc = ssc.accept();
 				if (sc == null)
 					break;
@@ -132,44 +125,36 @@ public class Tworker extends Actor
 				 * 
 				 */
 				Tworker wk = Tsc.wk[Tsc.roundRobinWorkerIndex()];
-				wk.future(x ->
-				{
+				wk.future(x -> {
 					if (Log.isTrace())
 						Log.trace("got a connect : %s", Net.getRemoteAddr(sc));
 					ActorNet an = null;
 					if (Tsc.protocol == ActorNet.STMP)
 						an = new StmpN2H(sc, wk.wk);
-					try
-					{
+					try {
 						wk.addActorNet(an);
 						wk.setSocketOpt(an.sc);
 						sc.register(slt, SelectionKey.OP_READ);/* 关心读事件. */
-					} catch (Exception e)
-					{
-						if (Log.isError())
-						{
+					} catch (Exception e) {
+						if (Log.isError()) {
 							Log.error("%s", Log.trace(e));
 						}
 					}
 				});
 			}
-		} catch (Exception e)
-		{
+		} catch (Exception e) {
 			if (Log.isError())
 				Log.error("%s", Log.trace(e));
 		}
 	}
 
-	public final boolean evnRead(SelectionKey key)
-	{
+	public final boolean evnRead(SelectionKey key) {
 		int p = key.channel().hashCode();
-		if (p == this.pipe.source().hashCode())
-		{/* 管道上的消息处理. */
+		if (p == this.pipe.source().hashCode()) {/* 管道上的消息处理. */
 			return this.evnReadPipe(this.pipe.source());
 		}
 		ActorNet an = this.ans.get(p);
-		if (an == null)
-		{
+		if (an == null) {
 			key.cancel();/* 没有处理. */
 			Log.fault("it is a bug");
 			return false;
@@ -178,30 +163,23 @@ public class Tworker extends Actor
 	}
 
 	/** 处理管道上的消息. */
-	public final boolean evnReadPipe(Pipe.SourceChannel source)
-	{
-		try
-		{
+	public final boolean evnReadPipe(Pipe.SourceChannel source) {
+		try {
 			int ret = source.read(this.bb);
-			while (ret > 0)
-			{
+			while (ret > 0) {
 				this.bb.position(0);
 				ret = source.read(this.bb);
 			}
-			if (ret != 0)
-			{
+			if (ret != 0) {
 				Log.fault("it is a bug");
 			}
 			Consumer<Void> c = this.cs.poll();
-			while (c != null)
-			{
+			while (c != null) {
 				Misc.exeConsumer(c, null);
 				c = this.cs.poll();
 			}
-		} catch (IOException e)
-		{
-			if (Log.isError())
-			{
+		} catch (IOException e) {
+			if (Log.isError()) {
 				Log.error("%s", Log.trace(e));
 			}
 		}
@@ -209,25 +187,19 @@ public class Tworker extends Actor
 	}
 
 	/** 处理网络报文送达. */
-	public final boolean evnReadSocket(ActorNet an, SelectionKey key)
-	{
+	public final boolean evnReadSocket(ActorNet an, SelectionKey key) {
 		SocketChannel sc = (SocketChannel) key.channel();
 		boolean flag = false;
-		try
-		{
-			while (flag)
-			{
+		try {
+			while (flag) {
 				int ret = sc.read(an.rbb);
-				if (ret == -1 || !this.evnReadMsg(an))
-				{/* 远程连接关闭或消息处理失败. */
+				if (ret == -1 || !this.evnReadMsg(an)) {/* 远程连接关闭或消息处理失败. */
 					flag = false;
 					break;
 				}
 			}
-		} catch (IOException e)
-		{
-			if (Log.isError())
-			{
+		} catch (IOException e) {
+			if (Log.isError()) {
 				Log.error("%s", Log.trace(e));
 			}
 		}
@@ -235,50 +207,39 @@ public class Tworker extends Actor
 	}
 
 	/** 处理网络报文送达. */
-	public final boolean evnReadMsg(ActorNet an)
-	{
+	public final boolean evnReadMsg(ActorNet an) {
 		byte[] by = an.rbb.array();
 		int len = an.rbb.position();
 		int ofst = 0;
-		for (;;)
-		{
-			if (len < 1)
-			{
+		for (;;) {
+			if (len < 1) {
 				break;
 			}
 			int size = -1;/* -1: 协议异常, 0: 还不是一个完整的报文, >0: 是一个完整的报文, 表示报文的长度. */
-			if (an.protocol == ActorNet.STMP)
-			{
+			if (an.protocol == ActorNet.STMP) {
 				size = ((StmpNet) an).evnRead(this, by, ofst, len);
 			}
-			if (size == -1)
-			{/* 消息处理异常. */
+			if (size == -1) {/* 消息处理异常. */
 				return false;
 			}
-			if (size < 0)
-			{
+			if (size < 0) {
 				Log.fault("it`s a bug, size: %d, stack: %s", size, Misc.getStackInfo());
 				return false;
 			}
-			if (size == 0)
-			{/* 不是完整的报文. */
+			if (size == 0) {/* 不是完整的报文. */
 				return false;
 			}
 			ofst += len;
 			len -= size;
 		}
-		try
-		{
-			if (len != an.rbb.position())
-			{
-				for (int i = 0; i < len; i++)
-				{
+		try {
+			if (len != an.rbb.position()) {
+				for (int i = 0; i < len; i++) {
 					by[i] = by[i + ofst];
 				}
 				an.rbb.position(len);
 			}
-		} catch (Exception e)
-		{
+		} catch (Exception e) {
 			Log.fault("it`s a bug, len: %d, an.rbb.length: %d, exception: %s", len, an.rbb.capacity(), Log.trace(e));
 			return false;
 		}
@@ -287,33 +248,27 @@ public class Tworker extends Actor
 
 	public final void push(Consumer<Void> c)/* 有可能有其他线程发送消息处理. */
 	{
-		try
-		{
+		try {
 			this.cs.add(c);
 			if (this.busy)
 				return;
-			synchronized (this)
-			{
+			synchronized (this) {
 				this.signal.position(0);
 				this.pipe.sink().write(this.signal);
 			}
-		} catch (IOException e)
-		{
+		} catch (IOException e) {
 			if (Log.isError())
 				Log.error("%s", Log.trace(e));
 		}
 	}
 
 	/** 将网络套接字注册到当前工作线程中. */
-	public final boolean regServerSocketChannel(ServerSocketChannel ssc)
-	{
-		try
-		{
+	public final boolean regServerSocketChannel(ServerSocketChannel ssc) {
+		try {
 			ssc.register(this.slt, SelectionKey.OP_ACCEPT);
 			Log.info("the tworker(%d) regist selector", this.wk);
 			return true;
-		} catch (ClosedChannelException e)
-		{
+		} catch (ClosedChannelException e) {
 			if (Log.isError())
 				Log.error("%s", Log.trace(e));
 			Misc.lazySystemExit();
@@ -322,18 +277,15 @@ public class Tworker extends Actor
 	}
 
 	/** 初始化管道. */
-	public final Pipe initPipe()
-	{
-		try
-		{
+	public final Pipe initPipe() {
+		try {
 			Pipe pipe = Pipe.open();
 			pipe.source().configureBlocking(false);/* 读设置非堵塞. */
 			pipe.source().register(slt, SelectionKey.OP_READ);
 			pipe.sink().configureBlocking(true);/* 写设置阻塞. */
 			Tsc.currwk.set(this);
 			return pipe;
-		} catch (IOException e)
-		{
+		} catch (IOException e) {
 			if (Log.isError())
 				Log.error("%s", Log.trace(e));
 			return null;
@@ -341,11 +293,9 @@ public class Tworker extends Actor
 	}
 
 	/** 添加ActorNet. */
-	public final void addActorNet(ActorNet an)
-	{
+	public final void addActorNet(ActorNet an) {
 		ActorNet old = this.ans.get(an.sc.hashCode());
-		if (old != null)
-		{
+		if (old != null) {
 			Log.fault("may be it`s a bug, old: %s, new: %s", old, an);
 		}
 		// TODO: 检查僵尸连接.
@@ -353,8 +303,7 @@ public class Tworker extends Actor
 	}
 
 	/** 关闭ActorNet. */
-	public final void removeActorNet(ActorNet an)
-	{
+	public final void removeActorNet(ActorNet an) {
 		an.relByteBuffs();
 		this.ans.remove(an.sc.hashCode());
 		an.sc.keyFor(this.slt).cancel();/* 从selector处注销. */
@@ -363,8 +312,7 @@ public class Tworker extends Actor
 		an.est = false;
 	}
 
-	public final void setSocketOpt(SocketChannel sc) throws Exception
-	{
+	public final void setSocketOpt(SocketChannel sc) throws Exception {
 		sc.configureBlocking(false);
 		sc.setOption(StandardSocketOptions.SO_LINGER, -1);
 		sc.setOption(StandardSocketOptions.TCP_NODELAY, true);
