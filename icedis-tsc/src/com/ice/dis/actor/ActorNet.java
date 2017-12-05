@@ -15,7 +15,8 @@ import com.ice.dis.core.Tworker;
 import misc.Log;
 import misc.Net;
 
-public abstract class ActorNet extends Actor {
+public abstract class ActorNet extends Actor
+{
 	/** STMP协议. */
 	public static final byte STMP = 0x01;
 	/** MODBUS_TCP协议. */
@@ -28,6 +29,8 @@ public abstract class ActorNet extends Actor {
 	public boolean est = false;
 	/** 连接标识, 用于打印. */
 	public String peer = null;
+	/** 最后收到消息(指的是一个完整的消息, 而不是一些字节. 原因在于协议片段报文会一直缓存在buffer中, 不被上层处理)的时间戳(毫秒). */
+	public long lts = 0L;
 	/** 网络连接. */
 	public SocketChannel sc = null;
 	/** 读缓冲区. */
@@ -38,15 +41,15 @@ public abstract class ActorNet extends Actor {
 	 * 
 	 * 但是对于另一些客户端来说, 则可能流量太大, 或有缓存消息带来的临时浪涌, 因此这里设置了一个缓冲区).
 	 * 
-	 * 缓冲由一些可能大小不等的ByteBuffer组成, 这些ByteBuffer来自一个内存池, 当某个ByteBuffer中的数据全部被发送出去后,
-	 * 它将归入内存池.
+	 * 缓冲由一些可能大小不等的ByteBuffer组成, 这些ByteBuffer来自一个内存池, 当某个ByteBuffer中的数据全部被发送出去后, 它将归入内存池.
 	 * 
 	 */
 	public List<ByteBuffer> wbb = null;
 	/** 连接上是否注册的写事件. */
 	public boolean regWrite = false;
 
-	public ActorNet(ActorType type, SocketChannel sc, ByteBuffer buf) {
+	public ActorNet(ActorType type, SocketChannel sc, ByteBuffer buf)
+	{
 		super(type);
 		this.sc = sc;
 		this.peer = Net.getRemoteAddr(sc);
@@ -60,11 +63,14 @@ public abstract class ActorNet extends Actor {
 	public abstract int evnRead(Tworker worker, byte[] by, int _ofst_, int _len_);
 
 	/** 消息出栈. */
-	public void send(byte[] by) {
-		if (!this.est) {
+	public void send(byte[] by)
+	{
+		if (!this.est)
+		{
 			return;
 		}
-		if (this.wbb != null) {
+		if (this.wbb != null)
+		{
 			this.write2Wbb(by);
 			return;
 		}
@@ -73,15 +79,19 @@ public abstract class ActorNet extends Actor {
 		/** 依赖系统管理TCP发送缓冲区. */
 		/**                                  */
 		/** -------------------------------- */
-		try {
-			if (this.sc.write(ByteBuffer.wrap(by)) != by.length) {/** 适用于流量较小的连接, 当TCP发送缓冲满时, 认为异常, 断开连接. */
+		try
+		{
+			if (this.sc.write(ByteBuffer.wrap(by)) != by.length)
+			{/** 适用于流量较小的连接, 当TCP发送缓冲满时, 认为异常, 断开连接. */
 				if (Log.isWarn())
 					Log.warn("tcp SND_BUF was full, we will close this connection, peer: %s", this.peer);
 				this.close();
 				return;
 			}
-		} catch (IOException e) {
-			if (Log.isError()) {
+		} catch (IOException e)
+		{
+			if (Log.isError())
+			{
 				Log.error("%s", Log.trace(e));
 			}
 			this.close();
@@ -89,21 +99,26 @@ public abstract class ActorNet extends Actor {
 	}
 
 	/** 进入应用层发送缓冲区, 等待写事件到来时出栈. */
-	public void write2Wbb(byte[] by) {
+	public void write2Wbb(byte[] by)
+	{
 		ByteBuffer bb = null;
-		if (this.wbb.size() == 0) {/* 无缓存. */
+		if (this.wbb.size() == 0)
+		{/* 无缓存. */
 			bb = Tmempool.malloc(by.length);
 			bb.put(by);
 			bb.flip();
 			this.wbb.add(bb);
-		} else {
+		} else
+		{
 			bb = this.wbb.get(this.wbb.size() - 1);/* 取最后一个缓存. */
-			if (bb.capacity() - bb.limit() < by.length) {/* 最后一个不足以塞入by. */
+			if (bb.capacity() - bb.limit() < by.length)
+			{/* 最后一个不足以塞入by. */
 				bb = Tmempool.malloc(by.length);
 				bb.put(by);
 				bb.flip();
 				this.wbb.add(bb);
-			} else {
+			} else
+			{
 				int pos = bb.position();
 				bb.position(bb.limit());
 				bb.limit(bb.capacity());
@@ -117,22 +132,29 @@ public abstract class ActorNet extends Actor {
 	}
 
 	/** 套接字可写. */
-	public final boolean evnWrite(SelectionKey key) {
+	public final boolean evnWrite(SelectionKey key)
+	{
 		this.regWrite = false;/* 是否需要阻塞. */
-		if (this.wbb.size() > 0) {
+		if (this.wbb.size() > 0)
+		{
 			Iterator<ByteBuffer> it = this.wbb.iterator();
-			while (it.hasNext()) {
+			while (it.hasNext())
+			{
 				ByteBuffer bb = it.next();
-				try {
+				try
+				{
 					this.sc.write(bb);
-					if (bb.remaining() == 0) {/* 全部写入. */
+					if (bb.remaining() == 0)
+					{/* 全部写入. */
 						Tmempool.free(bb);
 						it.remove();
-					} else {
+					} else
+					{
 						this.regWrite = true;/* 需要阻塞. */
 						break;
 					}
-				} catch (Exception e) {
+				} catch (Exception e)
+				{
 					if (Log.isError())
 						Log.error("%s", Log.trace(e));
 					this.close();
@@ -140,42 +162,51 @@ public abstract class ActorNet extends Actor {
 				}
 			}
 		}
-		if (key == null) {
+		if (key == null)
+		{
 			key = this.sc.keyFor(Tsc.getCurrentWorker().slt);
 		}
-		if (!regWrite) {/* 不阻塞, 暂时不关心写事件. */
+		if (!regWrite)
+		{/* 不阻塞, 暂时不关心写事件. */
 			key.interestOps(SelectionKey.OP_READ);
-		} else {
+		} else
+		{
 			key.interestOps(SelectionKey.OP_READ | SelectionKey.OP_WRITE);
 		}
 		return true;
 	}
 
 	/** 关闭连接. */
-	public void close() {
+	public void close()
+	{
 
 	}
 
 	/** 静默关闭, 不触发evnDis. */
-	public void closeSlient() {
-		if (!est) {
+	public void closeSlient()
+	{
+		if (!est)
+		{
 			return;
 		}
 		this.getTworker().removeActorNet(this);
 	}
 
 	/** 设置应用层的缓冲区, 使之根据selector的写事件来进行消息出栈. */
-	public final void enableSndBufAppCache() {
+	public final void enableSndBufAppCache()
+	{
 		this.wbb = new ArrayList<>();
 	}
 
 	/** 归还连接上持有的ByteBuffer块到内存池. */
-	public final void relByteBuffs() {
+	public final void relByteBuffs()
+	{
 		if (this.wbb == null)
 			return;
 		this.regWrite = false;
 		Iterator<ByteBuffer> it = this.wbb.iterator();
-		while (it.hasNext()) {
+		while (it.hasNext())
+		{
 			Tmempool.free(it.next());
 			it.remove();
 		}
