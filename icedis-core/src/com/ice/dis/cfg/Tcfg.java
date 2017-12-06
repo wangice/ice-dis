@@ -3,7 +3,8 @@ package com.ice.dis.cfg;
 import misc.Log;
 import misc.Misc;
 
-public class Tcfg {
+public class Tcfg
+{
 	/** SSC地址. */
 	public static final String DIS_CFG_SSC_ADDR = "DIS_CFG_SSC_ADDR";
 	/** 登录到SSC的账号. */
@@ -16,16 +17,18 @@ public class Tcfg {
 	/**                                                                  */
 	/**                                                                  */
 	/** ---------------------------------------------------------------- */
-	public static String dis_cfg_ssc_addr = "192.168.1.2:1224";
+	public static String dis_cfg_ssc_addr = "0.0.0.0:1224";
 	public static String dis_cfg_ssc_secret = "DIS0000@88888888";
 	//
 	public static String dis_http_server_address = "0.0.0.0:9090";
 
-	private Tcfg() {
+	private Tcfg()
+	{
 
 	}
 
-	public static void init() {
+	public static void init()
+	{
 		Tcfg.dis_cfg_ssc_addr = Misc.getEnvStr(Tcfg.DIS_CFG_SSC_ADDR, Tcfg.dis_cfg_ssc_addr);
 		Tcfg.dis_cfg_ssc_secret = Misc.getEnvStr(Tcfg.DIS_CFG_SSC_SECRET, Tcfg.dis_cfg_ssc_secret);
 		//
@@ -33,7 +36,8 @@ public class Tcfg {
 
 		//
 		Log.info("\n----------------------------------------------------------------");
-		Misc.getEnvs().forEach(o -> {
+		Misc.getEnvs().forEach(o ->
+		{
 			if (o.getKey().toString().indexOf("DIS_") == 0)
 				Log.info("%s=%s", o.getKey(), o.getValue());
 		});

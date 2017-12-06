@@ -21,6 +21,7 @@ public class NeMsg
 		Ne ne = new Ne(neaddr, n2h);
 		n2h.tusr = ne;
 		n2h.setNe(ne.id);
+		Log.info("have a NE auth successfully, N2H: %s", n2h);
 		if (Log.isInfo())
 			Log.info("have a NE auth successfully, N2H: %s", n2h);
 		Router.instance().addNe(n2h.getNe(), ne);
