@@ -27,7 +27,7 @@ public class Cfg
 	/** 默认值. */
 	/**                                                                  */
 	/** ---------------------------------------------------------------- */
-	public static String libtsc_server_addr = "0.0.0.0:1224";
+	public static String libtsc_server_addr = "127.0.0.1:1224";
 	public static int libtsc_worker = 4;/* tworker工程线程. */
 	public static int libtsc_peer_mtu = 0x2000;
 	public static int libtsc_peer_rcvbuf = 0x2000;

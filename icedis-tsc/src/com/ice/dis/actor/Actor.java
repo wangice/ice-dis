@@ -48,7 +48,7 @@ public abstract class Actor
 			return;
 		}
 		if (Tsc.getCurrentTworkerIndex() != this.wk)/* 不是同一线程. */
-			Tsc.wk[this.wk].push(c);
+			Tsc.wks[this.wk].push(c);
 		else
 			Misc.exeConsumer(c, null);
 	}
@@ -56,6 +56,6 @@ public abstract class Actor
 	/** 得到当前线程. */
 	public Tworker getTworker()
 	{
-		return this.wk == -1 ? null : Tsc.wk[this.wk];
+		return this.wk == -1 ? null : Tsc.wks[this.wk];
 	}
 }

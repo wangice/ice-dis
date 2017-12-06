@@ -17,7 +17,7 @@ public class Tcfg
 	/**                                                                  */
 	/**                                                                  */
 	/** ---------------------------------------------------------------- */
-	public static String dis_cfg_ssc_addr = "0.0.0.0:1224";
+	public static String dis_cfg_ssc_addr = "127.0.0.1:1224";
 	public static String dis_cfg_ssc_secret = "DIS0000@88888888";
 	//
 	public static String dis_http_server_address = "0.0.0.0:9090";

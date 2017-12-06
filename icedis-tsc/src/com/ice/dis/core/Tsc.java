@@ -18,7 +18,7 @@ import misc.Net;
 public class Tsc
 {
 	/** 拥有的Tworker数量. */
-	public static Tworker[] wk;
+	public static Tworker[] wks;
 	/** 每个线程Tworker对象. */
 	public static final ThreadLocal<Tworker> currwk = new ThreadLocal<>();
 	/** 服务器句柄. */
@@ -40,9 +40,9 @@ public class Tsc
 		Cfg.init();
 		try
 		{
-			Tsc.wk = new Tworker[Cfg.libtsc_worker];
-			for (int i = 0; i < Tsc.wk.length; i++)
-				Tsc.wk[i] = new Tworker(i, Selector.open());
+			Tsc.wks = new Tworker[Cfg.libtsc_worker];
+			for (int i = 0; i < Tsc.wks.length; i++)
+				Tsc.wks[i] = new Tworker(i, Selector.open());
 			Misc.sleep(100);
 			return true;
 		} catch (IOException e)
@@ -105,7 +105,7 @@ public class Tsc
 			Tsc.srv.socket().bind(Net.getAddr(Cfg.libtsc_server_addr), 0x800);
 			Tsc.srv.configureBlocking(false);
 			Log.info("libtsc already listen on %s.", Cfg.libtsc_server_addr);
-			Tsc.wk[0].future(v -> Tsc.wk[0].regServerSocketChannel(Tsc.srv));/* only one Tworker thread for connection accept. */
+			Tsc.wks[0].future(v -> Tsc.wks[0].regServerSocketChannel(Tsc.srv));/* only one Tworker thread for connection accept. */
 			return true;
 		} catch (IOException e)
 		{
