@@ -47,6 +47,7 @@ public class Ssc extends StmpH2N
 			// 订阅一些网元
 		}, tm ->
 		{
+			Log.info("est 鉴权超时！");
 			if (Log.isWarn())
 				Log.warn("auth with SSC timeout, SSC: %s.", Tcfg.dis_cfg_ssc_addr);
 		}, Cfg.libtsc_n2h_trans_packet_timeout);

@@ -1,7 +1,6 @@
 package com.ice.dis.test;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.Pipe;
 import java.nio.channels.SelectionKey;
@@ -9,6 +8,8 @@ import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
+
+import misc.Net;
 
 public class DisNioSocketServer
 {
@@ -30,7 +31,7 @@ public class DisNioSocketServer
 		{
 			ssc = ServerSocketChannel.open();
 			ssc.socket().setReuseAddress(true);
-			ssc.socket().bind(new InetSocketAddress(port));
+			ssc.socket().bind(Net.getAddr(addr, port));
 			ssc.configureBlocking(false);
 			ssc.register(selector, SelectionKey.OP_ACCEPT);
 		} catch (IOException e)

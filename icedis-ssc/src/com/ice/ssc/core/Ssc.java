@@ -3,6 +3,7 @@ package com.ice.ssc.core;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.ice.dis.core.Tsc;
+import com.ice.ssc.msg.NeMsg;
 import com.ice.ssc.srv.SrvComm.NeAuthReq;
 import com.ice.ssc.srv.SrvComm.NeAuthRsp;
 
@@ -35,7 +36,7 @@ public class Ssc
 	{
 		Log.info("\n----------------------------------------------------------------");
 		boolean ret = //
-				Tsc.regBeginEndBeforeAuth(NeAuthReq.class, NeAuthRsp.class, null) && //
+				Tsc.regBeginEndBeforeAuth(NeAuthReq.class, NeAuthRsp.class, NeMsg.class) && //
 						0 == "".length();
 		Log.info("\n----------------------------------------------------------------");
 		return ret;
