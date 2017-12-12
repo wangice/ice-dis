@@ -179,7 +179,7 @@ public class Tworker extends Actor
 	public final boolean evnRead(SelectionKey key)
 	{
 		if (key.channel() == this.pipe.source())/* 管道上的消息处理. */
-			return this.evnReadPipe(this.pipe.source());
+			return this.evnReadPipe((Pipe.SourceChannel) key.channel());
 		ActorNet an = this.ans.get((SocketChannel) key.channel());
 		if (an == null)
 		{
@@ -215,9 +215,7 @@ public class Tworker extends Actor
 				ret = source.read(this.bb);
 			}
 			if (ret != 0)
-			{
 				Log.fault("it is a bug");
-			}
 			Consumer<Void> c = this.cs.poll();
 			while (c != null)
 			{
@@ -227,9 +225,7 @@ public class Tworker extends Actor
 		} catch (IOException e)
 		{
 			if (Log.isError())
-			{
 				Log.error("%s", Log.trace(e));
-			}
 		}
 		return true;
 	}
@@ -244,17 +240,29 @@ public class Tworker extends Actor
 			while (flag)
 			{
 				int ret = sc.read(an.rbb);
-				if (ret == -1 || !this.evnReadMsg(an))
-				{/* 远程连接关闭或消息处理失败. */
+
+				if (ret == -1 || !this.evnReadMsg(an))/* 远程连接关闭或消息处理失败. */
+				{
 					flag = false;
 					break;
 				}
 			}
 		} catch (IOException e)
 		{
+			flag = false;
 			if (Log.isError())
 				Log.error("%s", Log.trace(e));
 		}
+		if (flag)
+			return true;
+		if (Log.isTrace())
+			Log.trace("have a client disconnected: %s", an);
+		if (an.est)/* 如果连接还在, 则可能是消息格式本身的错误,等等. */
+		{
+			this.removeActorNet(an);
+			an.evnDis();
+		} else
+			;/* 如果连接已经不在, 则一定是已经调用过evnDis和上面的removeActorNet. */
 		return false;
 	}
 
@@ -272,22 +280,16 @@ public class Tworker extends Actor
 			}
 			int size = -1;/* -1: 协议异常, 0: 还不是一个完整的报文, >0: 是一个完整的报文, 表示报文的长度. */
 			if (an.protocol == ActorNet.STMP)
-			{
 				size = ((StmpNet) an).evnRead(this, by, ofst, len);
-			}
-			if (size == -1)
-			{/* 消息处理异常. */
+			if (size == -1)/* 消息处理异常. */
 				return false;
-			}
 			if (size < 0)
 			{
 				Log.fault("it`s a bug, size: %d, stack: %s", size, Misc.getStackInfo());
 				return false;
 			}
-			if (size == 0)
-			{/* 不是完整的报文. */
+			if (size == 0)/* 不是完整的报文. */
 				return false;
-			}
 			ofst += len;
 			len -= size;
 		}
@@ -402,4 +404,12 @@ public class Tworker extends Actor
 		sc.setOption(StandardSocketOptions.SO_RCVBUF, Cfg.libtsc_peer_rcvbuf);
 		sc.setOption(StandardSocketOptions.SO_SNDBUF, Cfg.libtsc_peer_sndbuf);
 	}
+
+	//
+	/** 定时震荡. */
+	public final void quartz(long now)
+	{
+		TscTimerMgr.quartz(now);
+	}
+
 }

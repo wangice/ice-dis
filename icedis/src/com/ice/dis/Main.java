@@ -21,5 +21,6 @@ public class Main
 			Misc.lazySystemExit();
 		if (!Dis.instance().init())
 			Misc.lazySystemExit();
+		Tsc.hold();
 	}
 }

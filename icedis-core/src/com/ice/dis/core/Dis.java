@@ -1,6 +1,9 @@
 package com.ice.dis.core;
 
 import com.ice.dis.cfg.Tcfg;
+import com.ice.dis.http.HttpReq;
+import com.sun.net.httpserver.HttpServer;
+import com.sun.net.httpserver.spi.HttpServerProvider;
 
 import misc.Log;
 import misc.Net;
@@ -25,9 +28,27 @@ public class Dis
 	/** DIS进程初始化. */
 	public final boolean init()
 	{
+		if (!this.startHttpServer())
+			return false;
 		if (!this.setupH2ns())
 			return false;
 		return true;
+	}
+
+	public final boolean startHttpServer()
+	{
+		try
+		{
+			HttpServer server = HttpServerProvider.provider().createHttpServer(Net.getAddr(Tcfg.dis_http_server_address), 1024);
+			server.createContext("/public", exc -> HttpMsgDispatcher.dispatch(new HttpReq(exc)));
+			server.start();
+			return true;
+		} catch (Exception e)
+		{
+			if (Log.isError())
+				Log.error("%s", Log.trace(e));
+			return false;
+		}
 	}
 
 	/** 开启所有H2N连接. */

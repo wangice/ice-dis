@@ -15,6 +15,8 @@ public class Cfg
 	public static final String LIBTSC_PEER_SNDBUF = "LIBTSC_PEER_SNDBUF";
 	/** H2N重连等待(秒). */
 	public static final String LIBTSC_H2N_RECONN = "LIBTSC_H2N_RECONN";
+	/** 定时器精度(毫秒). */
+	public static final String LIBTSC_QUARTZ = "LIBTSC_QUARTZ";
 
 	/** 日志级别. */
 	public static final String LIBTSC_LOG_LEVEL = "LIBTSC_LOG_LEVEL";
@@ -34,8 +36,9 @@ public class Cfg
 	public static int libtsc_peer_sndbuf = 0x2000;
 	public static long libtsc_h2n_reconn = 3;
 	public static int libtsc_n2h_trans_packet_timeout = 15;
+	public static long libtsc_quartz = 1000;
 	//
-	public static String libtsc_log_level = "INFO";
+	public static String libtsc_log_level = "DEBUG";
 	public static int libtsc_log_output = Log.OUTPUT_STDOUT;
 	public static boolean libtsc_log_single = false;
 
@@ -49,6 +52,7 @@ public class Cfg
 		Cfg.libtsc_server_addr = Misc.getSetEnvStr(Cfg.LIBTSC_SERVER_ADDR, Cfg.libtsc_server_addr);
 		Cfg.libtsc_worker = Misc.getSetEnvInt(Cfg.LIBTSC_WORKER, Cfg.libtsc_worker);
 		Cfg.libtsc_h2n_reconn = Misc.getSetEnvInt(Cfg.LIBTSC_H2N_RECONN, (int) Cfg.libtsc_h2n_reconn);
+		Cfg.libtsc_quartz = Misc.getSetEnvInt(Cfg.LIBTSC_QUARTZ, (int) Cfg.libtsc_quartz);
 		//
 		Cfg.logenv();
 		Log.info("\n----------------------------------------------------------------");

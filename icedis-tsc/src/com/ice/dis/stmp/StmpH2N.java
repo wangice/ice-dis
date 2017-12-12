@@ -91,9 +91,7 @@ public abstract class StmpH2N extends StmpNet
 		}
 		this.disc();/* 连接已失去. */
 		if (this.rxEnable)
-		{
 			this.connect();/* 重连. */
-		}
 	}
 
 	public boolean evnMsg(StmpNode root)
@@ -246,20 +244,22 @@ public abstract class StmpH2N extends StmpNet
 				Log.debug("can not found Tn2htrans for tid: %08X, may be it was timeout.", tid);
 			return true;
 		}
-		RpcStub stub = Tsc.rpcStubs.get(tt.begin.getClass().getName());
+		RpcStub stub = this.rpcStubs.get(tt.begin.getClass().getName());
 		if (stub == null)
 		{
-			this.trans.remove(tid);
 			if (Log.isDebug())
 				Log.debug("unsupported operation, msg: %s, peer: %s", tt.begin.getClass().getName(), this.peer);
+			this.trans.remove(tid);
+			this.timeoutTrans(tt);
 			return false;
 		}
 		Short ret = StmpDec.getShort(root, Stmp.STMP_TAG_RET);
 		if (ret == null)
 		{
-			this.trans.remove(tid); /* 这里有问题(应该在continue完成时移除, 不然无法让事务超时)!!!!!!!!!!!!!!!!!!!!!!!!!!!!. */
 			if (Log.isDebug())
 				Log.debug("missing required field: STMP_TAG_RET");
+			this.trans.remove(tid);
+			this.timeoutTrans(tt);
 			return false;
 		}
 		tt.ret = ret.intValue(); /* 返回值已到达. */
@@ -270,9 +270,10 @@ public abstract class StmpH2N extends StmpNet
 			byte dat[] = StmpDec.getBin(root, Stmp.STMP_TAG_DAT);
 			if (dat == null)
 			{
-				this.trans.remove(tid);
 				if (Log.isDebug())
 					Log.debug("missing required field: STMP_TAG_DAT");
+				this.trans.remove(tid);
+				this.timeoutTrans(tt);
 				return false;
 			}
 			this.continues.put(tid, new StmpContinueCache(Stmp.STMP_TAG_TRANS_END, tid, tt.begin.getClass().getName(), dat, null, null, Byte.MIN_VALUE, Short.MIN_VALUE)); /* 缓存. */
@@ -387,6 +388,13 @@ public abstract class StmpH2N extends StmpNet
 		}
 	}
 
+	/** 超时处理. */
+	private final void timeoutTrans(StmpInitiativeTrans<StmpH2N> trans)
+	{
+		trans.tm = true;
+		Misc.exeConsumer(trans.tmCb, trans);
+	}
+
 	/** H2N上的网络消息(基于STMP-PROTOBUF的RPC)注册, 用于H2N主动发起的事务. */
 	public final boolean regBeginEnd(Class<?> begin, Class<?> end)
 	{
@@ -432,6 +440,7 @@ public abstract class StmpH2N extends StmpNet
 					end == null ? "NULL" : end.getName(), //
 					uni == null ? "NULL" : uni.getName(), //
 					service ? "true" : "false");
+		System.out.println("msg:" + msg.getName());
 		this.rpcStubs.put(msg.getName(), new RpcStub(m, begin, end, uni, true, rpc, service, srvDoc));
 		return true;
 	}

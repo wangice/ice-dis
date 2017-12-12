@@ -1,5 +1,7 @@
 package com.ice.dis.core;
 
+import com.ice.dis.http.HttpReq;
+
 /***
  * 请求拦截.
  * 
@@ -10,5 +12,8 @@ package com.ice.dis.core;
  */
 public class HttpMsgDispatcher
 {
+	public static final void dispatch(HttpReq req)
+	{
 
+	}
 }

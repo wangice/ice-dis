@@ -53,6 +53,24 @@ public class Tsc
 		}
 	}
 
+	/** 定时震荡. */
+	public static final void hold()
+	{
+		while (true)
+		{
+			Misc.sleep(Cfg.libtsc_quartz);
+			Tsc.clock = System.currentTimeMillis();
+			for (int i = 0; i < Tsc.wks.length; i++)
+			{
+				Tworker wk = Tsc.wks[i];
+				wk.future(c ->
+				{
+					wk.quartz(Tsc.clock);
+				});
+			}
+		}
+	}
+
 	/** N2H上的网络消息(基于STMP-PROTOBUF的RPC)注册, 用于N2H被动接收的事务(鉴权通过前). */
 	public static final boolean regBeginEndBeforeAuth(Class<?> begin, Class<?> end, Class<?> handler)
 	{

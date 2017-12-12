@@ -22,6 +22,6 @@ public class Main
 		if (!Ssc.instance().init())
 			Misc.lazySystemExit();
 		Tsc.publish(ActorNet.STMP);
-
+		Tsc.hold();
 	}
 }
